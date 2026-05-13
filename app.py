@@ -1,8 +1,11 @@
 # ============================================================
-# 🧠 AI Sentiment & Emotion Analysis — ULTIMATE PRO MAX v3
-# Features: Voice, Chatbot, Deep Learning, Mobile UI,
-#           Dashboard, PDF, CSV, Compare, Toxicity, Fake News
-# FIXED: Chatbot tuple→dict format, File type, PDF output
+# 🧠 AI Sentiment & Emotion Analysis — ULTIMATE PRO MAX v4
+# FIXED FOR GRADIO 6.x:
+#   - theme/css moved to app.launch()
+#   - gr.Chatbot: removed unsupported type="messages"
+#   - chatbot history uses tuples (user_msg, response)
+#   - chat_clear returns ([], "")
+#   - gr.File upload uses .name correctly
 # ============================================================
 
 from textblob import TextBlob
@@ -35,7 +38,6 @@ except Exception as e:
 
 # ─── History & Chat Store ────────────────────────────────────
 history_store = []
-chat_history   = []
 
 language_choices = [
     "Auto Detect","English","Hindi","Spanish","French",
@@ -113,7 +115,8 @@ def make_bar_chart(polarity, subjectivity):
     fig.patch.set_facecolor(bg)
     pol_color = '#4CAF50' if polarity >= 0.1 else ('#f44336' if polarity <= -0.1 else '#FF9800')
     axes[0].barh(['Polarity'], [polarity], color=pol_color, height=0.4)
-    axes[0].set_xlim(-1, 1); axes[0].axvline(0, color='black', linewidth=0.8, linestyle='--')
+    axes[0].set_xlim(-1, 1)
+    axes[0].axvline(0, color='black', linewidth=0.8, linestyle='--')
     axes[0].set_title('Polarity Score', fontweight='bold')
     axes[0].set_xlabel('Negative ← 0 → Positive')
     axes[0].text(polarity, 0, f'  {polarity:.2f}', va='center', fontweight='bold')
@@ -123,7 +126,8 @@ def make_bar_chart(polarity, subjectivity):
     axes[1].set_title('Subjectivity Score', fontweight='bold')
     axes[1].set_xlabel('Objective ← 0.5 → Subjective')
     axes[1].text(subjectivity, 0, f'  {subjectivity:.2f}', va='center', fontweight='bold')
-    plt.tight_layout(); return fig
+    plt.tight_layout()
+    return fig
 
 
 def make_pie_chart(emotion_counts):
@@ -133,7 +137,8 @@ def make_pie_chart(emotion_counts):
            colors=colors[:len(emotion_counts)], autopct='%1.1f%%',
            startangle=140, textprops={'fontsize': 11})
     ax.set_title('Emotion Distribution', fontsize=14, fontweight='bold')
-    plt.tight_layout(); return fig
+    plt.tight_layout()
+    return fig
 
 
 # ─── Tab 1: Single Text ───────────────────────────────────────
@@ -143,20 +148,22 @@ def analyze_single(text, language):
 
     translated = text
     if language == "Auto Detect" or language != "English":
-        try: translated = GoogleTranslator(source='auto', target='en').translate(text)
-        except: pass
+        try:
+            translated = GoogleTranslator(source='auto', target='en').translate(text)
+        except:
+            pass
 
     blob = TextBlob(translated)
     pol, sub = blob.sentiment.polarity, blob.sentiment.subjectivity
     emotion, desc, traits = detect_emotion(pol, sub, translated)
 
-    # Deep Learning result
     dl_result = ""
     if DL_AVAILABLE:
         try:
             res = dl_sentiment(translated[:512])[0]
             dl_result = f"\n🧠 Deep Learning: {res['label']} (confidence: {res['score']:.2%})"
-        except: pass
+        except:
+            pass
 
     suggestion  = get_suggestion(emotion)
     toxicity    = check_toxicity(translated)
@@ -168,7 +175,9 @@ def analyze_single(text, language):
 
     history_store.append({
         "Text": text[:80] + "..." if len(text) > 80 else text,
-        "Emotion": emotion, "Polarity": round(pol, 2), "Subjectivity": round(sub, 2)
+        "Emotion": emotion,
+        "Polarity": round(pol, 2),
+        "Subjectivity": round(sub, 2)
     })
 
     return f"{emotion}\n{desc}", pol_str, sub_str, traits_str, extra, make_bar_chart(pol, sub)
@@ -203,7 +212,8 @@ def compare_texts(text1, text2):
     out = []
     for t in [text1, text2]:
         if not t.strip():
-            out.append(("⚠️ Empty","—","—","—")); continue
+            out.append(("⚠️ Empty", "—", "—", "—"))
+            continue
         blob = TextBlob(t)
         pol, sub = blob.sentiment.polarity, blob.sentiment.subjectivity
         emo, desc, traits = detect_emotion(pol, sub, t)
@@ -212,7 +222,7 @@ def compare_texts(text1, text2):
     pol1 = TextBlob(text1).sentiment.polarity if text1.strip() else 0
     pol2 = TextBlob(text2).sentiment.polarity if text2.strip() else 0
     fig, ax = plt.subplots(figsize=(8, 4))
-    bars = ax.bar(['Text 1','Text 2'], [pol1, pol2],
+    bars = ax.bar(['Text 1', 'Text 2'], [pol1, pol2],
                   color=['#4CAF50' if p >= 0 else '#f44336' for p in [pol1, pol2]])
     ax.axhline(0, color='black', linewidth=0.8, linestyle='--')
     ax.set_title('Polarity Comparison', fontsize=14, fontweight='bold')
@@ -226,11 +236,15 @@ def compare_texts(text1, text2):
 
 # ─── Tab 4: PDF Analysis ─────────────────────────────────────
 def analyze_pdf(file):
-    if file is None: return "⚠️ Upload a PDF.", "", None
+    if file is None:
+        return "⚠️ Upload a PDF.", "", None
     try:
-        reader = PyPDF2.PdfReader(file.name)
+        # Gradio 6.x passes file path as string directly
+        file_path = file if isinstance(file, str) else file.name
+        reader = PyPDF2.PdfReader(file_path)
         text = "".join(p.extract_text() or "" for p in reader.pages)
-        if not text.strip(): return "❌ No text found in PDF.", "", None
+        if not text.strip():
+            return "❌ No text found in PDF.", "", None
     except Exception as e:
         return f"❌ Error: {e}", "", None
 
@@ -247,28 +261,36 @@ def analyze_pdf(file):
 
 # ─── Tab 5: Bulk CSV ─────────────────────────────────────────
 def analyze_csv(file, language):
-    if file is None: return None, None, None, None, "⚠️ Upload a CSV."
-    try: df = pd.read_csv(file.name)
-    except Exception as e: return None, None, None, None, f"❌ {e}"
+    if file is None:
+        return None, None, None, None, "⚠️ Upload a CSV."
+    try:
+        # Gradio 6.x passes file path as string directly
+        file_path = file if isinstance(file, str) else file.name
+        df = pd.read_csv(file_path)
+    except Exception as e:
+        return None, None, None, None, f"❌ {e}"
 
     text_col = next((c for c in df.columns
-                     if any(k in c.lower() for k in ['review','text','comment','feedback'])),
+                     if any(k in c.lower() for k in ['review', 'text', 'comment', 'feedback'])),
                     df.columns[0])
     results, emo_counts, polarities, all_text = [], {}, [], ""
 
     for _, row in df.iterrows():
         text = str(row[text_col])
         translated = text
-        if language not in ("English","Auto Detect"):
-            try: translated = GoogleTranslator(source='auto', target='en').translate(text)
-            except: pass
+        if language not in ("English", "Auto Detect"):
+            try:
+                translated = GoogleTranslator(source='auto', target='en').translate(text)
+            except:
+                pass
         blob = TextBlob(translated)
         pol, sub = blob.sentiment.polarity, blob.sentiment.subjectivity
         emo, desc, traits = detect_emotion(pol, sub, translated)
         emo_counts[emo] = emo_counts.get(emo, 0) + 1
-        polarities.append(pol); all_text += " " + translated
+        polarities.append(pol)
+        all_text += " " + translated
         results.append({"Text": text, "Emotion": emo,
-                        "Polarity": round(pol,2), "Subjectivity": round(sub,2),
+                        "Polarity": round(pol, 2), "Subjectivity": round(sub, 2),
                         "Traits": ", ".join(traits) or "None"})
 
     results_df = pd.DataFrame(results)
@@ -283,7 +305,7 @@ def analyze_csv(file, language):
     ax1.set_title('Emotion Distribution', fontsize=14, fontweight='bold')
     plt.xticks(rotation=30, ha='right')
     for bar, cnt in zip(bars, emo_counts.values()):
-        ax1.text(bar.get_x()+bar.get_width()/2, bar.get_height()+0.1,
+        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.1,
                  str(cnt), ha='center', fontweight='bold')
     plt.tight_layout()
 
@@ -292,26 +314,27 @@ def analyze_csv(file, language):
 
     # Trend line
     fig3, ax3 = plt.subplots(figsize=(10, 4))
-    ax3.plot(range(1, len(polarities)+1), polarities, marker='o', color='#2196F3', linewidth=2)
+    ax3.plot(range(1, len(polarities) + 1), polarities, marker='o', color='#2196F3', linewidth=2)
     ax3.axhline(0, color='red', linestyle='--')
-    ax3.fill_between(range(1, len(polarities)+1), polarities, 0,
+    ax3.fill_between(range(1, len(polarities) + 1), polarities, 0,
                      where=[p >= 0 for p in polarities], alpha=0.2, color='green', label='Positive')
-    ax3.fill_between(range(1, len(polarities)+1), polarities, 0,
+    ax3.fill_between(range(1, len(polarities) + 1), polarities, 0,
                      where=[p < 0 for p in polarities], alpha=0.2, color='red', label='Negative')
     ax3.set_title('Sentiment Trend', fontsize=14, fontweight='bold')
-    ax3.legend(); plt.tight_layout()
+    ax3.legend()
+    plt.tight_layout()
 
-    avg = sum(polarities)/len(polarities)
+    avg = sum(polarities) / len(polarities)
     summary = (f"✅ {len(results)} reviews analyzed!\n\n📊 Breakdown:\n" +
-               "\n".join(f"  {e}: {c}" for e,c in sorted(emo_counts.items(), key=lambda x:-x[1])) +
+               "\n".join(f"  {e}: {c}" for e, c in sorted(emo_counts.items(), key=lambda x: -x[1])) +
                f"\n\n📈 Avg Polarity: {avg:.2f}" +
-               f"\n🏆 Overall: {'Positive 😊' if avg>0.1 else 'Negative 😞' if avg<-0.1 else 'Neutral 😐'}")
+               f"\n🏆 Overall: {'Positive 😊' if avg > 0.1 else 'Negative 😞' if avg < -0.1 else 'Neutral 😐'}")
 
     return fig1, fig2, fig3, excel_path, summary
 
 
 # ─── Tab 6: AI Chatbot ───────────────────────────────────────
-# FIX: Use dict format {"role": ..., "content": ...} instead of tuples
+# Uses TUPLE format (user_msg, response) — compatible with all Gradio versions
 def chatbot_response(user_msg, history):
     if not user_msg.strip():
         return history, ""
@@ -331,9 +354,8 @@ def chatbot_response(user_msg, history):
                 f"{toxicity}\n\n"
                 f"Feel free to share another message and I'll analyze it! 😊")
 
-    # ✅ FIXED: Append dicts with 'role' and 'content' keys
-    history.append({"role": "user", "content": user_msg})
-    history.append({"role": "assistant", "content": response})
+    # ✅ Tuple format — works with all Gradio versions
+    history.append((user_msg, response))
     return history, ""
 
 
@@ -349,9 +371,9 @@ def show_dashboard():
                f"📝 Total Analyzed   : {len(df)}\n"
                f"📈 Avg Polarity     : {avg_pol:.2f}\n"
                f"🏆 Top Emotion      : {most_common}\n"
-               f"😊 Positive         : {len(df[df['Polarity']>0.1])}\n"
-               f"😞 Negative         : {len(df[df['Polarity']<-0.1])}\n"
-               f"😐 Neutral          : {len(df[(df['Polarity']>=-0.1)&(df['Polarity']<=0.1)])}\n\n"
+               f"😊 Positive         : {len(df[df['Polarity'] > 0.1])}\n"
+               f"😞 Negative         : {len(df[df['Polarity'] < -0.1])}\n"
+               f"😐 Neutral          : {len(df[(df['Polarity'] >= -0.1) & (df['Polarity'] <= 0.1)])}\n\n"
                f"📋 RECENT HISTORY:\n{'='*35}\n")
     for _, row in df.tail(10).iterrows():
         summary += f"• {row['Text'][:50]}\n  → {row['Emotion']} | {row['Polarity']}\n\n"
@@ -360,47 +382,55 @@ def show_dashboard():
 
 # ─── Tab 8: PDF Report ───────────────────────────────────────
 def generate_pdf_report(text, language):
-    if not text.strip(): return None
+    if not text.strip():
+        return None
     translated = text
-    if language not in ("English","Auto Detect"):
-        try: translated = GoogleTranslator(source='auto', target='en').translate(text)
-        except: pass
+    if language not in ("English", "Auto Detect"):
+        try:
+            translated = GoogleTranslator(source='auto', target='en').translate(text)
+        except:
+            pass
     blob = TextBlob(translated)
     pol, sub = blob.sentiment.polarity, blob.sentiment.subjectivity
     emotion, desc, traits = detect_emotion(pol, sub, translated)
 
     pdf = FPDF()
     pdf.add_page()
-    pdf.set_font("Arial","B",16)
-    pdf.cell(0,10,"AI Sentiment Analysis Report",ln=True,align="C")
-    pdf.set_font("Arial","",12); pdf.ln(5)
-    pdf.cell(0,8,f"Emotion   : {emotion.encode('latin-1','replace').decode('latin-1')}",ln=True)
-    pdf.cell(0,8,f"Description: {desc}",ln=True)
-    pdf.cell(0,8,f"Polarity  : {pol:.2f}",ln=True)
-    pdf.cell(0,8,f"Subjectivity: {sub:.2f}",ln=True)
-    pdf.ln(3); pdf.set_font("Arial","B",12)
-    pdf.cell(0,8,"Traits:",ln=True); pdf.set_font("Arial","",11)
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "AI Sentiment Analysis Report", ln=True, align="C")
+    pdf.set_font("Arial", "", 12)
+    pdf.ln(5)
+    pdf.cell(0, 8, f"Emotion   : {emotion.encode('latin-1','replace').decode('latin-1')}", ln=True)
+    pdf.cell(0, 8, f"Description: {desc}", ln=True)
+    pdf.cell(0, 8, f"Polarity  : {pol:.2f}", ln=True)
+    pdf.cell(0, 8, f"Subjectivity: {sub:.2f}", ln=True)
+    pdf.ln(3)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Traits:", ln=True)
+    pdf.set_font("Arial", "", 11)
     for t in traits:
-        pdf.cell(0,7,f"  - {t.encode('latin-1','replace').decode('latin-1')}",ln=True)
-    pdf.ln(3); pdf.set_font("Arial","B",12)
-    pdf.cell(0,8,"AI Suggestion:",ln=True); pdf.set_font("Arial","",11)
-    pdf.multi_cell(0,7,get_suggestion(emotion))
-    pdf.ln(3); pdf.set_font("Arial","B",12)
-    pdf.cell(0,8,"Safety Check:",ln=True); pdf.set_font("Arial","",11)
-    pdf.multi_cell(0,7,check_toxicity(translated).encode('latin-1','replace').decode('latin-1'))
+        pdf.cell(0, 7, f"  - {t.encode('latin-1','replace').decode('latin-1')}", ln=True)
+    pdf.ln(3)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "AI Suggestion:", ln=True)
+    pdf.set_font("Arial", "", 11)
+    pdf.multi_cell(0, 7, get_suggestion(emotion))
+    pdf.ln(3)
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "Safety Check:", ln=True)
+    pdf.set_font("Arial", "", 11)
+    pdf.multi_cell(0, 7, check_toxicity(translated).encode('latin-1', 'replace').decode('latin-1'))
 
-    # ✅ FIXED: Save to a proper temp file and return path
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', dir=tempfile.gettempdir()) as tmp:
         pdf_path = tmp.name
     pdf.output(pdf_path)
     return pdf_path
 
 
-# ─── Build UI ─────────────────────────────────────────────────
+# ─── CSS ─────────────────────────────────────────────────────
 css = """
 body { font-family: 'Segoe UI', sans-serif; }
 .gradio-container { max-width: 1100px !important; margin: auto; }
-.gr-button-primary { background: linear-gradient(135deg,#667eea,#764ba2) !important; }
 footer { display: none !important; }
 @media (max-width: 600px) {
     .gradio-container { padding: 8px !important; }
@@ -408,7 +438,9 @@ footer { display: none !important; }
 }
 """
 
-with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max") as app:
+# ─── Build UI ─────────────────────────────────────────────────
+# ✅ FIXED: theme and css removed from gr.Blocks() — passed to launch() instead
+with gr.Blocks(title="🧠 AI Sentiment Pro Max") as app:
 
     gr.Markdown("""
     # 🧠 AI Emotion & Sentiment Analysis — Pro Max
@@ -444,12 +476,12 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
         with gr.Tab("🎤 Voice Analysis"):
             gr.Markdown("### 🎤 Record your voice and analyze its sentiment!")
             gr.Markdown("> 💡 Click the microphone button, speak clearly, then click **Analyze Voice**")
-            v_audio = gr.Audio(sources=["microphone"], type="filepath", label="🎙️ Record Audio")
-            v_btn   = gr.Button("🔍 Analyze Voice", variant="primary")
+            v_audio  = gr.Audio(sources=["microphone"], type="filepath", label="🎙️ Record Audio")
+            v_btn    = gr.Button("🔍 Analyze Voice", variant="primary")
             v_result = gr.Textbox(label="🎭 Voice Analysis Result", lines=6)
             with gr.Row():
-                v_pol   = gr.Textbox(label="📊 Polarity")
-                v_sub   = gr.Textbox(label="🧠 Subjectivity")
+                v_pol  = gr.Textbox(label="📊 Polarity")
+                v_sub  = gr.Textbox(label="🧠 Subjectivity")
             v_trait = gr.Textbox(label="🔍 Traits", lines=3)
             v_chart = gr.Plot(label="📈 Chart")
             v_btn.click(analyze_voice, [v_audio], [v_result, v_pol, v_sub, v_trait, v_chart])
@@ -510,15 +542,15 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
         # ── Tab 6: AI Chatbot ─────────────────────────────────
         with gr.Tab("🤖 AI Chatbot"):
             gr.Markdown("### Chat with AI! It will analyze the sentiment of everything you say!")
-            # ✅ FIXED: type="messages" for Gradio 4.x compatibility
-            chatbot = gr.Chatbot(label="💬 Sentiment Chatbot", height=400, type="messages")
+            # ✅ FIXED: Removed type="messages" — uses default tuple format
+            chatbot = gr.Chatbot(label="💬 Sentiment Chatbot", height=400)
             with gr.Row():
                 chat_input = gr.Textbox(placeholder="Type your message...", label="Your Message", scale=4)
                 chat_btn   = gr.Button("Send 💬", variant="primary", scale=1)
             chat_clear = gr.Button("🗑️ Clear Chat")
             chat_btn.click(chatbot_response, [chat_input, chatbot], [chatbot, chat_input])
             chat_input.submit(chatbot_response, [chat_input, chatbot], [chatbot, chat_input])
-            # ✅ FIXED: Clear returns empty list (works with dict format too)
+            # ✅ FIXED: Returns ([], "") to clear both chatbot and input
             chat_clear.click(lambda: ([], ""), None, [chatbot, chat_input])
 
         # ── Tab 7: Dashboard ──────────────────────────────────
@@ -540,4 +572,8 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
             r_btn.click(generate_pdf_report, [r_text, r_lang], [r_file])
 
 if __name__ == "__main__":
-    app.launch()
+    # ✅ FIXED: theme and css passed here (Gradio 6.x requirement)
+    app.launch(
+        theme=gr.themes.Soft(),
+        css=css
+    )
