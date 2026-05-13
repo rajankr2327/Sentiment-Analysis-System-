@@ -11,5 +11,5 @@ PyPDF2
 fpdf
 emoji
 transformers
-torch
+torch==2.0.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 SpeechRecognition
