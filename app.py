@@ -23,18 +23,8 @@ import PyPDF2
 from transformers import pipeline
 
 # ─── Load Deep Learning Model ────────────────────────────────
-print("⏳ Loading Deep Learning model...")
-try:
-    dl_sentiment = pipeline(
-        "sentiment-analysis",
-        model="distilbert-base-uncased-finetuned-sst-2-english",
-        truncation=True, max_length=512
-    )
-    DL_AVAILABLE = True
-    print("✅ Deep Learning model loaded!")
-except Exception as e:
-    DL_AVAILABLE = False
-    print(f"⚠️ DL model unavailable: {e}")
+DL_AVAILABLE = False
+print("⚠️ Deep Learning disabled for performance.")
 
 # ─── History & Chat Store ────────────────────────────────────
 history_store = []
