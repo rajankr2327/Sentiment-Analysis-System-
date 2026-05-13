@@ -4,3 +4,6 @@ deep-translator
 pandas
 matplotlib
 openpyxl
+wordcloud
+requests
+beautifulsoup4
