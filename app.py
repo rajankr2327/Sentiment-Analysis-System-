@@ -135,7 +135,7 @@ def analyze_single(text, language):
 
 def analyze_url(url):
     if not url.strip():
-        return "⚠️ Please enter a URL.", "", "", "", None
+        return "⚠️ Please enter a URL.", "No text extracted.", None
 
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
@@ -144,9 +144,9 @@ def analyze_url(url):
         paragraphs = soup.find_all('p')
         text = " ".join([p.get_text() for p in paragraphs[:20]])
         if not text.strip():
-            return "❌ Could not extract text from this URL.", "", "", "", None
+            return "❌ Could not extract text from this URL. Try a different link.", "No text found.", None
     except Exception as e:
-        return f"❌ Error fetching URL: {e}", "", "", "", None
+        return f"❌ Cannot access this URL on Hugging Face.\n\nTip: Try pasting the article text in the 📝 Single Text tab instead!\n\nError: {e}", "No text extracted.", None
 
     blob = TextBlob(text)
     polarity = blob.sentiment.polarity
@@ -157,7 +157,6 @@ def analyze_url(url):
     traits_str = "\n".join(traits) if traits else "No special traits."
     summary = f"🎭 Emotion: {emotion}\n📝 {emotion_desc}\n\n📊 Polarity: {polarity:.2f}\n🧠 Subjectivity: {subjectivity:.2f}\n\n🔍 Traits:\n{traits_str}\n\n🤖 AI Suggestion:\n{suggestion}"
     chart = make_chart(polarity, subjectivity)
-
     preview = text[:500] + "..." if len(text) > 500 else text
 
     return summary, preview, chart
