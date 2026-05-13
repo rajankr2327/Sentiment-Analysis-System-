@@ -7,3 +7,9 @@ openpyxl
 wordcloud
 requests
 beautifulsoup4
+PyPDF2
+fpdf
+emoji
+transformers
+torch
+SpeechRecognition
