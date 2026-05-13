@@ -148,12 +148,6 @@ def analyze_single(text, language):
     emotion, desc, traits = detect_emotion(pol, sub, translated)
 
     dl_result = ""
-    if DL_AVAILABLE:
-        try:
-            res = dl_sentiment(translated[:512])[0]
-            dl_result = f"\n🧠 Deep Learning: {res['label']} (confidence: {res['score']:.2%})"
-        except:
-            pass
 
     suggestion  = get_suggestion(emotion)
     toxicity    = check_toxicity(translated)
