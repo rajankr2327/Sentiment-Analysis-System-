@@ -58,7 +58,7 @@ def detect_emotion(polarity, subjectivity, text):
     for w in ["surprise","wow","omg","unbelievable","shocked"]:
         if w in text.lower(): traits.append("😲 Surprise Detected"); break
 
-    emojis_found = [c for c in text if c in emoji.EMOJI_DATA]
+    emojis_found = [c for c in text if emoji.is_emoji(c)]# In your terminal
     if emojis_found:
         traits.append(f"🎭 Emojis: {' '.join(emojis_found[:5])}")
 
@@ -386,7 +386,8 @@ footer { display: none !important; }
 }
 """
 
-with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max") as app:
+# NEW (Gradio 6.0+)
+with gr.Blocks(title="🧠 AI Sentiment Pro Max") as app:
 
     gr.Markdown("""
     # 🧠 AI Emotion & Sentiment Analysis — Pro Max
@@ -515,4 +516,4 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
             r_btn.click(generate_pdf_report, [r_text, r_lang], [r_file])
 
 if __name__ == "__main__":
-    app.launch()
+    app.launch(theme=gr.themes.Soft(), css=css)
