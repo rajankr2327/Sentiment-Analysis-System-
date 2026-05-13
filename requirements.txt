@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 textblob
 gradio
 deep-translator
@@ -12,4 +13,20 @@ fpdf
 emoji
 transformers
 torch==2.0.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+=======
+textblob
+gradio
+deep-translator
+pandas
+matplotlib
+openpyxl
+wordcloud
+requests
+beautifulsoup4
+PyPDF2
+fpdf
+emoji
+transformers
+torch==2.0.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+>>>>>>> a2619b96a9e7068603542fb3b94fcf330280ab82
 SpeechRecognition

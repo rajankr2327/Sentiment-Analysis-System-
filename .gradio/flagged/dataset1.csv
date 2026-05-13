@@ -1,0 +1,4 @@
+📝 Enter Your Text,🎭 Detected Emotion,📊 Polarity Score,🧠 Subjectivity Score,🔍 Emotional Traits,timestamp
+i love you,"😊 HAPPY
+Positive and cheerful tone.",0.50  (Scale: -1.0 Negative ← 0 → +1.0 Positive),"0.60  (0.0 = Fully Objective, 1.0 = Fully Subjective)","⚡ Very Short Text
+💖 Strong Positive Words",2026-05-13 08:58:03.343317
