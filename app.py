@@ -2,6 +2,7 @@
 # 🧠 AI Sentiment & Emotion Analysis — ULTIMATE PRO MAX v3
 # Features: Voice, Chatbot, Deep Learning, Mobile UI,
 #           Dashboard, PDF, CSV, Compare, Toxicity, Fake News
+# FIXED: Chatbot tuple→dict format, File type, PDF output
 # ============================================================
 
 from textblob import TextBlob
@@ -138,7 +139,7 @@ def make_pie_chart(emotion_counts):
 # ─── Tab 1: Single Text ───────────────────────────────────────
 def analyze_single(text, language):
     if not text.strip():
-        return "⚠️ Enter text.", "", "", "", "", "", None
+        return "⚠️ Enter text.", "", "", "", "", None
 
     translated = text
     if language == "Auto Detect" or language != "English":
@@ -310,6 +311,7 @@ def analyze_csv(file, language):
 
 
 # ─── Tab 6: AI Chatbot ───────────────────────────────────────
+# FIX: Use dict format {"role": ..., "content": ...} instead of tuples
 def chatbot_response(user_msg, history):
     if not user_msg.strip():
         return history, ""
@@ -321,15 +323,17 @@ def chatbot_response(user_msg, history):
     toxicity   = check_toxicity(user_msg)
 
     response = (f"I analyzed your message! Here's what I found:\n\n"
-                f"🎭 **Emotion:** {emotion}\n"
+                f"🎭 Emotion: {emotion}\n"
                 f"📝 {desc}\n"
-                f"📊 **Polarity:** {pol:.2f}\n"
-                f"🧠 **Subjectivity:** {sub:.2f}\n\n"
-                f"🤖 **My advice:** {suggestion}\n"
+                f"📊 Polarity: {pol:.2f}\n"
+                f"🧠 Subjectivity: {sub:.2f}\n\n"
+                f"🤖 My advice: {suggestion}\n"
                 f"{toxicity}\n\n"
                 f"Feel free to share another message and I'll analyze it! 😊")
 
-    history.append((user_msg, response))
+    # ✅ FIXED: Append dicts with 'role' and 'content' keys
+    history.append({"role": "user", "content": user_msg})
+    history.append({"role": "assistant", "content": response})
     return history, ""
 
 
@@ -385,7 +389,8 @@ def generate_pdf_report(text, language):
     pdf.cell(0,8,"Safety Check:",ln=True); pdf.set_font("Arial","",11)
     pdf.multi_cell(0,7,check_toxicity(translated).encode('latin-1','replace').decode('latin-1'))
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+    # ✅ FIXED: Save to a proper temp file and return path
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf', dir=tempfile.gettempdir()) as tmp:
         pdf_path = tmp.name
     pdf.output(pdf_path)
     return pdf_path
@@ -412,7 +417,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
 
     with gr.Tabs():
 
-        # Tab 1: Single Text
+        # ── Tab 1: Single Text ────────────────────────────────
         with gr.Tab("📝 Text Analysis"):
             with gr.Row():
                 with gr.Column(scale=1):
@@ -435,7 +440,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
                 ["I am so scared and nervous 😰", "Auto Detect"],
             ], inputs=[t_text, t_lang])
 
-        # Tab 2: Voice Analysis
+        # ── Tab 2: Voice Analysis ─────────────────────────────
         with gr.Tab("🎤 Voice Analysis"):
             gr.Markdown("### 🎤 Record your voice and analyze its sentiment!")
             gr.Markdown("> 💡 Click the microphone button, speak clearly, then click **Analyze Voice**")
@@ -449,7 +454,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
             v_chart = gr.Plot(label="📈 Chart")
             v_btn.click(analyze_voice, [v_audio], [v_result, v_pol, v_sub, v_trait, v_chart])
 
-        # Tab 3: Compare
+        # ── Tab 3: Compare ────────────────────────────────────
         with gr.Tab("🔁 Compare Texts"):
             gr.Markdown("### Compare 2 texts side by side!")
             with gr.Row():
@@ -474,7 +479,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
                         [c1_emo, c1_pol, c1_sub, c1_trait,
                          c2_emo, c2_pol, c2_sub, c2_trait, c_chart])
 
-        # Tab 4: PDF
+        # ── Tab 4: PDF Analysis ───────────────────────────────
         with gr.Tab("📄 PDF Analysis"):
             gr.Markdown("### Upload any PDF and analyze its sentiment!")
             p_file  = gr.File(label="📂 Upload PDF", file_types=[".pdf"])
@@ -484,7 +489,7 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
             p_chart = gr.Plot(label="📊 Chart")
             p_btn.click(analyze_pdf, [p_file], [p_sum, p_prev, p_chart])
 
-        # Tab 5: CSV
+        # ── Tab 5: CSV ────────────────────────────────────────
         with gr.Tab("📁 Bulk CSV"):
             gr.Markdown("### Upload CSV with column: `review`, `text`, `comment`, or `feedback`")
             with gr.Row():
@@ -502,19 +507,21 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
             csv_btn.click(analyze_csv, [csv_f, csv_lang],
                           [csv_c1, csv_c2, csv_c3, csv_dl, csv_sum])
 
-        # Tab 6: AI Chatbot
+        # ── Tab 6: AI Chatbot ─────────────────────────────────
         with gr.Tab("🤖 AI Chatbot"):
             gr.Markdown("### Chat with AI! It will analyze the sentiment of everything you say!")
-            chatbot = gr.Chatbot(label="💬 Sentiment Chatbot", height=400)
+            # ✅ FIXED: type="messages" for Gradio 4.x compatibility
+            chatbot = gr.Chatbot(label="💬 Sentiment Chatbot", height=400, type="messages")
             with gr.Row():
                 chat_input = gr.Textbox(placeholder="Type your message...", label="Your Message", scale=4)
                 chat_btn   = gr.Button("Send 💬", variant="primary", scale=1)
             chat_clear = gr.Button("🗑️ Clear Chat")
             chat_btn.click(chatbot_response, [chat_input, chatbot], [chatbot, chat_input])
             chat_input.submit(chatbot_response, [chat_input, chatbot], [chatbot, chat_input])
+            # ✅ FIXED: Clear returns empty list (works with dict format too)
             chat_clear.click(lambda: ([], ""), None, [chatbot, chat_input])
 
-        # Tab 7: Dashboard
+        # ── Tab 7: Dashboard ──────────────────────────────────
         with gr.Tab("📊 Dashboard"):
             gr.Markdown("### Your session analytics & history!")
             dash_btn = gr.Button("🔄 Refresh Dashboard", variant="primary")
@@ -522,13 +529,14 @@ with gr.Blocks(theme=gr.themes.Soft(), css=css, title="🧠 AI Sentiment Pro Max
             dash_pie = gr.Plot(label="🥧 Emotion Pie Chart")
             dash_btn.click(show_dashboard, [], [dash_sum, dash_pie])
 
-        # Tab 8: PDF Report
+        # ── Tab 8: PDF Report ─────────────────────────────────
         with gr.Tab("📥 PDF Report"):
             gr.Markdown("### Generate a professional PDF report of your analysis!")
             r_text = gr.Textbox(lines=6, placeholder="Enter text to analyze...", label="Enter Text")
             r_lang = gr.Dropdown(choices=language_choices, value="Auto Detect", label="🌍 Language")
             r_btn  = gr.Button("📥 Generate PDF Report", variant="primary")
-            r_file = gr.File(label="📄 Download Report")
+            # ✅ FIXED: type="filepath" so Gradio correctly serves the generated file
+            r_file = gr.File(label="📄 Download Report", type="filepath")
             r_btn.click(generate_pdf_report, [r_text, r_lang], [r_file])
 
 if __name__ == "__main__":
