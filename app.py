@@ -339,7 +339,8 @@ def chatbot_response(user_msg, history):
                 f"Feel free to share another message and I'll analyze it! 😊")
 
     # ✅ Tuple format — works with all Gradio versions
-    history.append((user_msg, response))
+    history.append({"role": "user", "content": user_msg})
+    history.append({"role": "assistant", "content": response})
     return history, ""
 
 
@@ -527,7 +528,7 @@ with gr.Blocks(title="🧠 AI Sentiment Pro Max") as app:
         with gr.Tab("🤖 AI Chatbot"):
             gr.Markdown("### Chat with AI! It will analyze the sentiment of everything you say!")
             # ✅ FIXED: Removed type="messages" — uses default tuple format
-            chatbot = gr.Chatbot(label="💬 Sentiment Chatbot", height=400)
+            chatbot = gr.Chatbot(label="💬 Sentiment Chatbot", height=400, type="messages")
             with gr.Row():
                 chat_input = gr.Textbox(placeholder="Type your message...", label="Your Message", scale=4)
                 chat_btn   = gr.Button("Send 💬", variant="primary", scale=1)
