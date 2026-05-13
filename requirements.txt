@@ -1,2 +1,6 @@
 textblob
 gradio
+googletrans==4.0.0rc1
+pandas
+matplotlib
+openpyxl
